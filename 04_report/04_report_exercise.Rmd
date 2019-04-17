@@ -1,0 +1,98 @@
+---
+title: "Outcomes after resection for colorectal cancer"
+author: "The Colorectal Cancer Collaborative"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+```{r include=FALSE}
+library(tidyverse)
+library(finalfit)
+library(knitr)
+library(boot)
+theme_set(theme_classic())
+load(file = here::here("processed-data", "colon_s_recode.rda"))
+```
+
+## Introduction
+Colorectal cancer is the third most common cancer worldwide. In this study, we have re-analysed a classic dataset to determine the influence of nodal disease in overall survival prior to the introduction of modern chemotherapeutic regimes. 
+
+## Methods
+Kaplan Meier and Cox Proportional Hazards regression approaches were used to analyse data.We have used RMarkdown to produce a document that includes all the analysis and text required for this report. 
+
+## Results
+
+### Patient characteristics
+
+```{r}
+dependent = "node4.factor"
+explanatory = c("age", "sex.factor", "extent.factor", "differ.factor")
+
+# Use summary_factorlist()
+# Use kable() to format and include a table caption
+# Use chunk cog to hide code
+```
+
+### Outcome by nodal status
+
+```{r}
+colon_s %>%
+  ggplot() + 
+  aes(x = node4.factor,
+      fill = status.factor) + 
+  geom_bar() +
+  xlab(">4 lymph nodes") + 
+  ylab("N")
+
+colon_s %>%
+  ggplot() + 
+  aes(x = node4.factor,
+      fill = status.factor) + 
+  geom_bar(position = "fill") +
+  xlab(">4 lymph nodes") + 
+  ylab("Proportion")
+
+# Combine these into single plot using library(patchwork)
+# Add a figure caption in the chunk preamble
+# Adjust figure height and width in preamble
+# Use chunk cog to hide code
+```
+
+Write something about results here.
+
+```{r}
+dependent = "Surv(time, status)"
+explanatory = "node4.factor"
+colon_s %>% 
+  surv_plot(dependent, explanatory)
+
+# Add a figure caption in the chunk preamble
+# Adjust figure height and width in preamble
+# Use chunk cog to hide code
+```
+
+### Overall survival
+
+```{r}
+dependent = "Surv(time, status)"
+explanatory = c("age", "sex.factor", "extent.factor", "differ.factor", "node4.factor")
+
+# Use the function finalfit()
+# Use kable() to shape final table
+# Use chunk cog to hide code
+```
+
+Write something about results here. 
+
+```{r fig.width=10}
+# Make an HR plot
+# Add a figure caption
+# Adjust height and width if necessary
+# Use chunk cog to hide code
+```
+ 
+## Discussion
+Conclude something about results here. 

@@ -1,0 +1,144 @@
+---
+title: "Outcomes after resection for melanoma"
+author: "The Melanoma Collaborative"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+## Introduction
+Melanoma is a skin cancer with poor prognosis. In this study we re-analyse a classical dataset of outcomes after melanoma surgery and compare these to contemporary studies. The aim is to characterise the effect of ulceration on outcome, while correcting for other prognostic markers. 
+
+<!-- Load libraries (Ctrl-Shift-C to do this comment)-->
+
+```{r include=FALSE}
+# I don't want these to show, so I will run them but have no output. 
+library(finalfit)
+library(ggplot2)
+library(dplyr)
+library(forcats)
+library(knitr)
+library(boot)
+load(file = here::here("data_original", "melanoma_recode.rda"))
+theme_set(theme_classic())
+```
+
+## Methods
+Kaplan Meier and Cox Proportional Hazards regression approaches were used to analyse data.We have used RMarkdown to produce a document that includes all the analysis and text required for this report. 
+
+## Results
+
+### Patient characteristics
+
+`r dim(melanoma)[1]` patients were included from between `r min(melanoma$year)` and `r max(melanoma$year)`. Patients were aged `r min(melanoma$age)` to `r max(melanoma$age)` years. A comparison by ulceration status is shown in Table 1. Tumour thickness and sex were associated with tumour ulceration.  
+
+
+```{r Demographics, echo=FALSE}
+dependent = "ulcer"
+explanatory = c("age", "sex", "year", "thickness")
+melanoma %>% 
+  summary_factorlist(dependent, explanatory, p = TRUE) %>% 
+  
+  # Format table using kable for output. 
+  dependent_label(melanoma, dependent) %>% 
+  kable(row.names = FALSE, align = c("l", "l", "r", "r", "r"),
+        caption = "Demographics.")
+```
+
+### Disease-specific survival
+
+Patients were more likely to die of melanoma if the tumour was ulcerated (Figure 1).
+
+```{r Ulceration plots, echo=FALSE, fig.cap="Outcome by tumour ulceration", fig.height=3, fig.width=7}
+library(patchwork)
+
+p1 = melanoma %>%
+  ggplot() + 
+  aes(x = ulcer,
+      fill = status) + 
+  geom_bar(show.legend = FALSE) + 
+  xlab("Ulceration") + 
+  ylab("N")
+
+p2 = melanoma %>%
+  ggplot() + 
+  aes(x = ulcer,
+      fill = status) + 
+  geom_bar(position = "fill") +
+  xlab("Ulceration") + 
+  ylab("Proportion")
+
+p1 + p2
+```
+
+A Kaplan-Meier analysis showed a clear disease-specific survival difference between patients with ulceration and those without (p<0.0001) (Figure 2). 
+
+```{r Survival plots, echo=FALSE, fig.cap="Survival after melanoma surgery. Disease-specific survival (A) and overall survival (B). ", fig.height=4, fig.width=7}
+dependent = "Surv(time/365, status == 'Died melanoma')"
+explanatory = "ulcer"
+p1 = melanoma %>% 
+  surv_plot(dependent, explanatory, xlab = "Time (years)", 
+            fontsize = 4, font.tickslab = 10,
+            pval = TRUE, pval.size = 4,
+            title = "A. Disease-specific survival")
+
+dependent = "Surv(time/365, status == 'Died melanoma' | status == 'Died not melanoma')"
+explanatory = "ulcer"
+p2 = melanoma %>% 
+  surv_plot(dependent, explanatory, xlab = "Time (years)", 
+            fontsize = 4, font.tickslab = 10, 
+            pval = TRUE, pval.size = 4,
+            title = "B. Overall survival")
+
+survminer::arrange_ggsurvplots(list(p1, p2))
+```
+
+```{r Regression table - DSS, echo=FALSE}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  finalfit(dependent, explanatory, add_dependent_label = FALSE) %>% 
+  {fit_dss <<- .} %>% 
+  rename("Disease-specific survival" = label) %>% 
+  rename(" " = levels) %>% 
+  kable(row.names = FALSE, align = c("l", "l", "r", "r", "r"),
+        caption = "Disease-specific survival. HR hazard ratio, SD standard deviation.")
+```
+
+In a univariable analysis, there was a signficant association between ulceration and a worse disease-specific survival (HR `r fit_dss[2,3]`). This persisted in a multivariable analysis (HR `r fit_dss[2,4]`) correcting for age, sex, operation year and tumour thickness (Table 2)(Figure 3).   
+
+```{r HR plot, echo=FALSE, fig.cap="Disease-specific survival after melanoma surgery. HR hazard ratio, CI confidence interval, SD standard deviation", fig.height=3, fig.width=12, warning=FALSE}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  hr_plot(dependent, explanatory, dependent_label = "Disease-specific survival")
+```
+
+### Overall survival
+
+Overall survival was also worse in patients who had an ulcerated melanoma (log-rank test p<0.0001)(Figure 2B). 
+
+```{r echo=FALSE}
+dependent = "Surv(time/365, status == 'Died melanoma' | status == 'Died not melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  finalfit(dependent, explanatory, add_dependent_label = FALSE) %>% 
+  {fit_os <<- .} %>% 
+  rename("Overall survival" = label) %>% 
+  rename(" " = levels) %>% 
+  kable(row.names = FALSE, align = c("l", "l", "r", "r", "r"),
+        caption = "Overall survival. HR hazard ratio, SD standard deviation.")
+```
+
+In a univariable analysis, there was also a signficant association between ulceration and overall survival (HR `r fit_os[2,3]`) which was also seen in the multivariable analysis (HR `r fit_os[2,4]`)(Table 3)(Figure 4).   
+
+```{r echo=FALSE, fig.cap="Overall survival after melanoma surgery. HR hazard ratio, CI confidence interval, SD standard deviation", fig.height=3, fig.width=12, warning=FALSE}
+dependent = "Surv(time/365, status == 'Died melanoma' | status == 'Died not melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  hr_plot(dependent, explanatory, dependent_label = "Overall survival")
+```
+
+## Discussion
+
+In this study we have re-analysed a classical dataset of outcomes after melanoma surgery. We have shown that that tumour ulceration is strong negative prognostic factor and is independent of better appreciated markers such as tumour thickness. 

@@ -1,0 +1,179 @@
+---
+title: "Melanoma analysis notebook"
+output:
+  html_notebook: default
+  pdf_document: default
+---
+
+## Background
+Here we are performing an exploratory data analysis using the `melanoma` dataset from `library(boot)`. We used this in HealthyR.
+
+These data consist of measurements made on patients with malignant melanoma. Each patient had their tumour removed by surgery at the Department of Plastic Surgery, University Hospital of Odense, Denmark during the period 1962 to 1977. The surgery consisted of complete removal of the tumour together with about 2.5cm of the surrounding skin. Among the measurements taken were the thickness of the tumour and whether it was ulcerated or not. These are thought to be important prognostic variables in that patients with a thick and/or ulcerated tumour have an increased chance of death from melanoma. Patients were followed until the end of 1977.
+
+We are particularly interested in the effect of tumour ulceration on survival.  
+
+## Load libraries
+
+```{r}
+library(tidyverse)
+library(finalfit)
+library(knitr)
+library(boot)
+
+# Set ggplot default appearance
+theme_set(theme_classic())
+```
+
+Note messages appear the first time the chunk is run. Use the `chunk cog` to turn messages off. In our final report document (session 4), we will not want this chunk to appear at all. Use the `chunk cog` -> `Output` to select `Show nothing (run code)`. 
+
+In an analysis document, all warnings and messages should be left turned on. 
+
+## Get and tidy data
+
+By hitting `F1` on `data(melanoma)` below we can see the codebook for the dataset - that is, the explanation of the different variables. Use this to recode the three factors. 
+
+```{r}
+data(melanoma)
+
+melanoma = melanoma %>% 
+  mutate(
+    sex = factor(sex) %>% 
+      fct_recode("Female" = "0",
+                 "Male"   = "1") %>% 
+      ff_label("Sex"),
+    
+    ulcer = factor(ulcer) %>% 
+      fct_recode("Absent"  = "0",
+                 "Present" = "1") %>% 
+      ff_label("Ulceration"),
+    
+    status = factor(status) %>% 
+      fct_recode("Died melanoma" = "1",
+                 "Alive" = "2",
+                 "Died not melanoma" = "3"),
+    
+    age       = ff_label(age, "Age (years)"),
+    year      = ff_label(year, ("Year of op")),
+    thickness = ff_label(thickness, "Tumour thickness (mm)")
+  )
+
+```
+
+## Explore data
+
+We are particularly interested in the relationship between the presence of an `ulcer` and outcome. We will start by plotting some of the data, prior to making summary tables. 
+
+### Plotting
+
+Start a chunk. Remember, `Insert` above does this or `Ctrl-Alt-I`. 
+
+Give the plot a title:
+
+#### Outcome by tumour ulceration (count)
+
+```{r}
+melanoma %>%
+  ggplot() + 
+  aes(x = ulcer,
+      fill = status) + 
+  geom_bar()
+```
+
+#### Outcome by tumour ulceration (proportion)
+
+```{r}
+melanoma %>%
+  ggplot() + 
+  aes(x = ulcer,
+      fill = status) + 
+  geom_bar(position = "fill") +
+  ylab("Proportion")
+```
+
+### Confounding
+
+Is tumour ulceration confounded by other variables that may influence outcome? We are going to start using functions from the `finalfit` packages. This is well document here https://finalfit.org and examples of all tables can be copied from here https://finalfit.org/articles/all_tables_examples.html. 
+
+```{r}
+dependent = "ulcer"
+explanatory = c("age", "sex", "year", "thickness")
+melanoma %>% 
+  summary_factorlist(dependent, explanatory, p = TRUE, add_dependent_label = TRUE)
+```
+
+Yes, tumour thickness and sex are associated with ulcer. We will need to incorporate these into our final model. 
+ 
+In session 4 we will add an extra line using `kable()` to make these tables output nicely into Word documents. 
+
+## Analysis
+
+### Plotting
+
+```{r}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = "ulcer"
+melanoma %>% 
+  surv_plot(dependent, explanatory)
+```
+
+### Model building
+
+#### Univariable with variable of interest
+
+```{r}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = "ulcer"
+melanoma %>% 
+  finalfit(dependent, explanatory, add_dependent_label = FALSE)
+```
+
+#### Multivariable including confounders
+
+```{r}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  finalfit(dependent, explanatory, add_dependent_label = FALSE)
+```
+
+In a multivariable model of survival after melanoma surgery, tumour ulceration, age, and tumour thickness were all independent prognostic markers. 
+
+### Extracting results to text
+
+To make your documents "live" and avoid transcribing results from tables, try this. 
+
+Save the table as an object. This can be done in the above chunk. It is copied here for demonstration. Note `include = FALSE` shows nothing but runs code. 
+
+```{r include=FALSE}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+fit = melanoma %>% 
+  finalfit(dependent, explanatory)
+```
+
+In a multivariable model of survival after melanoma surgery, tumour ulceration (HR `r fit[2, 4]`), age (HR `r fit[3, 4]`), and tumour thickness (HR `r fit[7, 4]`) were all independent prognostic markers. 
+
+Hit Preview above to check these figures. 
+
+### Hazard ratio plot
+
+```{r fig.width=10}
+dependent = "Surv(time, status == 'Died melanoma')"
+explanatory = c("ulcer", "age", "sex", "year", "thickness")
+melanoma %>% 
+  hr_plot(dependent, explanatory)
+```
+ 
+## Collaborative working
+
+We can publish this document via a number of online platforms. We use our own. Here is the document published and accessible to everyone working on a project: 
+https://argoshare.is.ed.ac.uk/melanoma_analysis
+
+## Save final dataset
+
+Create a new folder called `processed-data`. Then:
+
+
+```{r}
+save(melanoma, file = here::here("processed-data", "melanoma_recode.rda"))
+```

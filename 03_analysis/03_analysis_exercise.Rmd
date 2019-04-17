@@ -1,0 +1,115 @@
+---
+title: "Colorectal cancer analysis notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+## Background
+Use what you have learned to do some data exploration of a new dataset, `colon_s`. 
+
+These are data from one of the first successful trials of adjuvant chemotherapy for colon cancer. Levamisole is a low-toxicity compound previously used to treat worm infestations in animals; 5-FU is a moderately toxic (as these things go) chemotherapy agent. 
+
+We are particularly interested in the relationship beween lymph node status (`node4.factor`) and survival. This variable is categorical for patients with 4 or more positive lymph nodes found at cancer surgery. 
+
+## Load libraries
+
+```{r}
+library(tidyverse)
+library(finalfit)
+library(knitr)
+library(boot)
+theme_set(theme_classic())
+
+```
+
+## Get and tidy data
+By hitting `F1` on `data(colon_s)` below we can see the codebook for the dataset. 
+
+```{r}
+data(colon_s)
+```
+
+## Explore data
+Look at the relationship between nodal status (`node4.factor`) and some of the other variables. 
+
+### Plotting
+Start a chunk. Remember, `Insert` above does this or `Ctrl-Alt-I`. 
+
+Give the plot a title:
+
+#### Outcome by nodal status (count)
+
+```{r}
+colon_s %>%
+  ggplot() + 
+  aes(x = node4.factor,
+      fill = status.factor) + 
+  geom_bar()
+```
+
+#### Outcome by tumour ulceration (proportion)
+Using code from `03_analysis_pipeline.Rmd`, complete the following. 
+
+```{r}
+```
+
+### Confounding
+Is nodal status confounded by other variables that may influence outcome?
+
+```{r}
+dependent = "node4.factor"
+explanatory = c("age", "sex.factor", "extent.factor", "differ.factor")
+
+# Use summary_factorlist()
+
+```
+
+Write here what the results show. 
+
+## Analysis
+
+### Plotting
+
+```{r}
+dependent = "Surv(time, status)"
+explanatory = "node4.factor"
+colon_s %>% 
+  surv_plot(dependent, explanatory)
+
+```
+### Model building
+
+#### Univariable with variable of interest
+
+```{r}
+# Use the code in the previous chunk with the function finalfit()
+```
+
+#### Multivariable including confounders
+
+```{r}
+dependent = "Surv(time, status)"
+explanatory = c("age", "sex.factor", "extent.factor", "differ.factor", "node4.factor")
+
+# Use the function finalfit()
+```
+
+What do the results of the multivariable analysis show? Write these here. Which variables are independently predictive of survival?
+
+### Extracting results to text
+Re-create the above chunk but save the table as `fit`. Extract the `HR (multivariable)` for `node4.factor` and put in a sentence. 
+
+### HR plot 
+
+```{r fig.width=10}
+
+```
+ 
+## Preview, PDF and Word document
+Use `Run All` in the dropdown top right, then `Knit` your document in the above 3 formats. Make any adjustments to the presentation.  
+
+## Save final dataset
+```{r}
+save(colon_s, file = here::here("data_original", "colon_s_recode.rda"))
+```

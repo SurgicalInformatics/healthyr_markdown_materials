@@ -1,0 +1,83 @@
+---
+title: "My first RMarkdown"
+author: "! Your name here !"
+date: "18-April 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Data and set-up
+
+Loading the packages:
+
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(knitr)
+library(gapminder)
+
+```
+
+We will be using the gapminder dataset:
+
+```{r}
+
+mydata = gapminder %>% 
+  mutate(gdpPercap = round(gdpPercap)) %>% 
+  mutate(pop_millions = (pop/1e6) %>% round(1)) %>% 
+  select(-pop)
+
+```
+
+A random sample of rows in the dataset:
+```{r}
+
+mydata %>% 
+  sample_n(10) %>% 
+  kable()
+
+
+```
+
+Number of variables: `r mydata %>% ncol()`.
+
+Total number of observations: `r mydata %>% nrow()`.
+
+```{r}
+
+mydata$year %>% unique()
+
+# n_distinct() is a faster and more concise alternative to unique(x) %>% length():
+n_years     = mydata$year    %>% n_distinct()
+n_countries = mydata$country %>% n_distinct()
+
+```
+
+The number of countries included in the dataset is `r n_countries` and the number of years is `r n_years`. Is every country represented every year:
+
+```{r}
+
+n_years*n_countries == mydata %>% nrow()
+
+```
+
+# Plotting
+
+```{r}
+
+mydata %>% 
+  filter(year == 2007) %>% 
+  ggplot(  aes(x      = gdpPercap/1000, #divide by 1000 to tidy the x-axis
+               y      = lifeExp,
+               colour = continent,
+               size   = pop_millions)) +
+  geom_point(shape = 1) +
+  theme_bw()
+
+  
+```
+
+
+
+
